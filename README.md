@@ -1,1 +1,1 @@
-# SpinAttendace
+# SpinAttendance
