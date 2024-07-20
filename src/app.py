@@ -1,39 +1,74 @@
 import streamlit as st
 import pandas as pd
+import sqlite3
 from datetime import datetime
 
-EXCEL_FILE = 'students_attendance.xlsx'
+# Connect to the SQLite database (or create it if it doesn't exist)
+conn = sqlite3.connect('students_attendance.db')
+c = conn.cursor()
 
-# Try to read the Excel file, if it does not exist create an empty DataFrame
-try:
-    df = pd.read_excel(EXCEL_FILE)
-except FileNotFoundError:
-    df = pd.DataFrame(columns=['Name', 'Attendance Count', 'Last Attendance Date'])
+# Create the attendance table if it doesn't exist
+c.execute('''
+    CREATE TABLE IF NOT EXISTS attendance (
+        name TEXT,
+        attendance_count INTEGER,
+        last_attendance_date TEXT
+    )
+''')
+conn.commit()
 
-st.title('SRC Spin Class Check in: ')
+st.title('SRC Spin Class Check in')
+
+# Initialize session state variables
+if 'name' not in st.session_state:
+    st.session_state.name = ''
+if 'count' not in st.session_state:
+    st.session_state.count = None
 
 # Input form
 with st.form(key='attendance_form'):
-    name = st.text_input(label='Name')
+    name = st.text_input(label='Please Enter Full Name', value=st.session_state.name)
     submit_button = st.form_submit_button(label='Submit')
 
 if submit_button:
     current_date = datetime.now().strftime("%Y-%m-%d")
     
-    # Check if the name already exists in the DataFrame
-    if name in df['Name'].values:
+    # Check if the name already exists in the database
+    c.execute('SELECT * FROM attendance WHERE name = ?', (name,))
+    record = c.fetchone()
+    
+    if record:
         # Update the existing record
-        df.loc[df['Name'] == name, 'Attendance Count'] += 1
-        df.loc[df['Name'] == name, 'Last Attendance Date'] = current_date
+        new_count = record[1] + 1
+        c.execute('''
+            UPDATE attendance
+            SET attendance_count = ?, last_attendance_date = ?
+            WHERE name = ?
+        ''', (new_count, current_date, name))
+        st.session_state.count = new_count
     else:
         # Add a new record
-        new_data = pd.DataFrame({'Name': [name], 'Attendance Count': [1], 'Last Attendance Date': [current_date]})
-        df = pd.concat([df, new_data], ignore_index=True)
+        c.execute('''
+            INSERT INTO attendance (name, attendance_count, last_attendance_date)
+            VALUES (?, ?, ?)
+        ''', (name, 1, current_date))
+        st.session_state.count = 1
     
-    df.to_excel(EXCEL_FILE, index=False)
+    conn.commit()
     st.success('Attendance recorded')
+    
+    # Clear the text field by resetting session state
+    st.session_state.name = ''
 
-# Display the data
-st.subheader('Current Attendance Data')
-st.dataframe(df)
+# Display the entered name and count
+if st.session_state.count is not None:
+    st.subheader(f'Name: {name}')
+    st.subheader(f'Classes Attended: {st.session_state.count}')
 
+# Fetch the data from the database to display
+#df = pd.read_sql('SELECT * FROM attendance', conn)
+#st.subheader('Current Attendance Data')
+#st.dataframe(df)
+
+# Close the database connection 
+conn.close()
