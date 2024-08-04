@@ -3,6 +3,15 @@ import pandas as pd
 import sqlite3
 from datetime import datetime
 
+
+page_title = "SRC Spin Class Check in "
+page_icon = ":sports_medal:"
+layout = "centered"
+
+# Set the Streamlit page configuration
+st.set_page_config(page_title = page_title, page_icon = page_icon, layout = layout)
+st.title(page_title + " " + page_icon)
+
 # Connect to the SQLite database (or create it if it doesn't exist)
 conn = sqlite3.connect('students_attendance.db')
 c = conn.cursor()
@@ -17,7 +26,6 @@ c.execute('''
 ''')
 conn.commit()
 
-st.title('SRC Spin Class Check in')
 
 # Initialize session state variables
 if 'name' not in st.session_state:
@@ -29,6 +37,7 @@ if 'count' not in st.session_state:
 with st.form(key='attendance_form'):
     name = st.text_input(label='Please Enter Full Name', value=st.session_state.name)
     submit_button = st.form_submit_button(label='Submit')
+
 
 if submit_button:
     current_date = datetime.now().strftime("%Y-%m-%d")
@@ -72,3 +81,6 @@ if st.session_state.count is not None:
 
 # Close the database connection 
 conn.close()
+
+# ------- navigation Links ----------
+
